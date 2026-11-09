@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { Layout, Placement, Rect, Screen } from '../api/types';
-import { layoutPlacements, presentScreens, renderLayout, visibleScreens } from './adapter';
+import { layoutPlacements, presentScreens, RENDER_SCALE, renderLayout, visibleScreens } from './adapter';
 import { cornerPoint, opposite, resizeFromCorner } from './geometry';
 import { edgeProjections, sameProjections, tolerance } from './facing';
 import { presentCards } from '../devices/project';
 import type { DeviceCardsView } from '../api/cards';
 
-const screen = (display: string, bounds: Rect): Screen => ({
+const screen = (display: string, bounds: Rect, pixels = { w: 2000, h: 1200 }): Screen => ({
     key: { device: 'computer', display },
     device_name: 'Computer',
     os: 'macos',
@@ -14,8 +14,8 @@ const screen = (display: string, bounds: Rect): Screen => ({
         key: display,
         name: display,
         bounds,
-        pixel_width: 2000,
-        pixel_height: 1200,
+        pixel_width: pixels.w,
+        pixel_height: pixels.h,
         reference_extent: null,
         rotation_deg: 0,
         is_primary: display === 'a',
@@ -154,4 +154,25 @@ it('excludes missing AX at view time and restores all geometry without changing 
     expect(restored.map(s=>s.id)).toEqual(['computer:a','peer:c']);
     expect(restored[0]).toEqual(shown[0]);
     expect(value).toEqual(before);
+});
+
+describe('resolution badge', () => {
+    // macOS reports `bounds` in points, so a Retina screen must be labelled with
+    // its backing-store pixels; Windows bounds are already physical pixels.
+    it('labels the backing-store pixels of a scaled screen', () => {
+        const value = layout([screen('a', { x: 0, y: 0, w: 1728, h: 1117 }, { w: 3456, h: 2234 })]);
+        expect(renderLayout(value, {}).map(s => [s.labelWidth, s.labelHeight])).toEqual([[3456, 2234]]);
+    });
+    // A saved placement rescales the drawn rectangle; the badge keeps the panel's own pixels.
+    it('keeps the pixel label independent of a saved placement', () => {
+        const value = layout([screen('a', { x: 0, y: 0, w: 1728, h: 1117 }, { w: 3456, h: 2234 })]);
+        const [drawn] = renderLayout(value, {}, [placement]);
+        expect(drawn.w / RENDER_SCALE).toBeCloseTo(1728 * .002);
+        expect([drawn.labelWidth, drawn.labelHeight]).toEqual([3456, 2234]);
+    });
+    // Layout-only placeholders for a missing snapshot carry zero pixel dimensions.
+    it('falls back to the native coordinates when pixels are unknown', () => {
+        const value = layout([screen('a', { x: 0, y: 0, w: 1728, h: 1117 }, { w: 0, h: 0 })]);
+        expect(renderLayout(value, {}).map(s => [s.labelWidth, s.labelHeight])).toEqual([[1728, 1117]]);
+    });
 });

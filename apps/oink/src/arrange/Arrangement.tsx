@@ -669,7 +669,9 @@ export function Arrangement({ screens, platform = 'mac', geometryScreens = scree
             } as CSSProperties;
             const hz = Math.max(14, Math.min(R * 1.2, W / 3, H / 3));
             const out = gap + 8;
-            const label = tr('{0}，{1} × {2}，位置 {3}, {4}', s.name, fmt(s.w), fmt(s.h), fmt(s.x), fmt(s.y));
+            // Announce the same size the badge shows; `s.w`/`s.h` are render-space
+            // canvas units, not the screen's resolution.
+            const label = tr('{0}，{1} × {2}，位置 {3}, {4}', s.name, fmt(s.labelWidth ?? s.w), fmt(s.labelHeight ?? s.h), fmt(s.x), fmt(s.y));
             return (<div key={s.id} className="scr" style={style} role="button" tabIndex={0} aria-pressed={selected} aria-label={s.offline ? tr('{0}，离线', label) : label} aria-describedby={hintId} data-selected={selected && (!multi || alone) ? '' : undefined} data-active={isActive ? active!.mode : undefined} data-corner={isActive ? active!.corner : undefined} data-overlap={isActive && active!.overlap ? '' : undefined} data-ctx={contextFor?.(s)} onContextMenu={() => { if (contextFor?.(s))
                 onSelect(s.id); }} onFocus={() => { if (!pointerFocus.current) onSelect(s.id); }} onDoubleClick={() => onSelect(s.id, 'device')} onKeyDown={(e) => onScreenKeyDown(e, s)} onPointerDown={(e) => begin(e, s, 'move')} onPointerMove={move} onPointerUp={(e) => end(e)} onPointerCancel={(e) => end(e, true)} onLostPointerCapture={(e) => end(e)}>
             {/* Write radii on the painted node: the WebKit fallback rereads its

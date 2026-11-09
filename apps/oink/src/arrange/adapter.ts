@@ -13,6 +13,16 @@ export function renderLayout(
 ): Screen[] {
   return layout.geometry.screens.map((screen, index) => {
     const native = screen.display.bounds;
+    // `bounds` is the OS coordinate space: points on macOS, physical pixels on
+    // Windows. Labelling it as the resolution understated every Retina screen
+    // (a 16" Mac showing 1728 × 1117 points is really 3456 × 2234 pixels), so
+    // the badge reads the backing-store pixels and only falls back to the
+    // coordinates when a layout-only placeholder carries none. On a scaled
+    // ("looks like") mode those pixels are the framebuffer macOS renders into,
+    // which is the same figure Windows reports for the same mode.
+    const pixels = screen.display.pixel_width > 0 && screen.display.pixel_height > 0
+      ? { w: screen.display.pixel_width, h: screen.display.pixel_height }
+      : native;
     const saved = placements?.find(placement => placement.device === screen.key.device);
     const origin = saved ? {
       x: saved.origin.x + native.x * saved.scale,
@@ -31,8 +41,8 @@ export function renderLayout(
       groupSize: layout.geometry.screens.filter(peer => peer.key.device === screen.key.device).length,
       wallpaper: index,
       image: wallpapers[id],
-      labelWidth: native.w,
-      labelHeight: native.h,
+      labelWidth: pixels.w,
+      labelHeight: pixels.h,
       minimumWidth: screen.size.w * RENDER_SCALE * Math.min(1, 640 / native.w),
     };
   });
